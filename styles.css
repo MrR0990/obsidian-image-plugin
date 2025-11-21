@@ -1,5 +1,18 @@
 /* Obsidian Image Plugin Styles */
 
+/* Hide WikiLink text when image is enhanced */
+.internal-link:has(.enhanced-image) .internal-link-text,
+.internal-link:has(.image-zoom-wrapper) .internal-link-text {
+    display: none;
+}
+
+/* Hide the internal link itself, only show image */
+.internal-link:has(.enhanced-image),
+.internal-link:has(.image-zoom-wrapper) {
+    text-decoration: none;
+    color: inherit;
+}
+
 /* Image wrapper */
 .image-zoom-wrapper {
     position: relative;
