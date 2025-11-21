@@ -1,0 +1,10 @@
+{
+  "id": "obsidian-image-plugin",
+  "name": "Image Plugin",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "A plugin for managing images in Obsidian",
+  "author": "Your Name",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}
