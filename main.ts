@@ -1,4 +1,10 @@
-import { Plugin, Notice, MarkdownView } from "obsidian";
+import {
+  Plugin,
+  Notice,
+  MarkdownView,
+  Editor,
+  MarkdownFileInfo,
+} from "obsidian";
 import { ImagePluginSettings } from "./src/types";
 import { DEFAULT_SETTINGS, ImagePluginSettingTab } from "./src/settings";
 import { GitHubUploader } from "./src/githubUploader";
@@ -6,6 +12,7 @@ import { ImageZoomController } from "./src/imageZoom";
 import { ImageRenderer } from "./src/imageRenderer";
 import { CacheManager } from "./src/cacheManager";
 import { ImageDownloader } from "./src/imageDownloader";
+import { PasteHandler } from "./src/pasteHandler";
 
 /**
  * Obsidian Image Plugin
@@ -18,6 +25,7 @@ export default class ImagePlugin extends Plugin {
   private renderer: ImageRenderer;
   cacheManager: CacheManager; // Public for settings tab access
   private downloader: ImageDownloader;
+  private pasteHandler: PasteHandler;
 
   async onload() {
     console.log("Loading Image Plugin");
@@ -43,11 +51,50 @@ export default class ImagePlugin extends Plugin {
       this.uploader,
       this.downloader,
     );
+    this.pasteHandler = new PasteHandler(
+      this.settings,
+      this.uploader,
+      this.cacheManager,
+    );
 
     // Register markdown post processor for images
     this.registerMarkdownPostProcessor(async (el, ctx) => {
       await this.renderer.processImages(el, ctx);
     });
+
+    // Register paste event handler
+    this.registerEvent(
+      this.app.workspace.on(
+        "editor-paste",
+        async (
+          evt: ClipboardEvent,
+          editor: Editor,
+          info: MarkdownView | MarkdownFileInfo,
+        ) => {
+          const view = info instanceof MarkdownView ? info : null;
+          if (view) {
+            await this.pasteHandler.handlePaste(evt, editor, view);
+          }
+        },
+      ),
+    );
+
+    // Register drop event handler
+    this.registerEvent(
+      this.app.workspace.on(
+        "editor-drop",
+        async (
+          evt: DragEvent,
+          editor: Editor,
+          info: MarkdownView | MarkdownFileInfo,
+        ) => {
+          const view = info instanceof MarkdownView ? info : null;
+          if (view) {
+            await this.pasteHandler.handleDrop(evt, editor, view);
+          }
+        },
+      ),
+    );
 
     // Add commands
     this.addCommand({
@@ -136,6 +183,7 @@ export default class ImagePlugin extends Plugin {
     this.cacheManager?.updateSettings(this.settings);
     this.downloader?.updateSettings(this.settings);
     this.renderer?.updateSettings(this.settings);
+    this.pasteHandler?.updateSettings(this.settings);
   }
 
   /**

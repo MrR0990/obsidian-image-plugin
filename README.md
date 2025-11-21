@@ -14,6 +14,9 @@
 ### ☁️ GitHub 图床
 
 - **一键上传**: 将图片上传到 GitHub 仓库作为 CDN
+- **粘贴自动上传**: 直接粘贴图片自动上传到 GitHub 并插入链接
+- **拖放自动上传**: 拖放图片到编辑器自动上传
+- **外部图片处理**: 自动下载网页剪藏中的图片并上传
 - **自动生成唯一文件名**: 基于时间戳避免文件冲突
 - **支持批量上传**: 一次上传多张图片
 - **配置灵活**: 支持自定义仓库、分支和存储路径
@@ -124,12 +127,44 @@ npm run build
 
 ### 上传图片到 GitHub
 
+**方法 1：粘贴图片直接上传** ⭐ 推荐
+1. 在任意位置复制图片（截图、从网页复制等）
+2. 在 Obsidian 笔记中直接粘贴（Ctrl/Cmd + V）
+3. 插件自动上传到 GitHub 并插入 Markdown 链接
+4. 图片保存在插件的缓存目录，同时上传到 GitHub
+
+**方法 2：拖放图片自动上传**
+1. 从文件管理器拖动图片文件到编辑器
+2. 自动上传到 GitHub 并插入链接
+
+**方法 3：点击上传按钮**
 1. 鼠标悬停在要上传的图片上
 2. 点击 "📤 Upload" 按钮
 3. 等待上传完成
 4. 图片 URL 会自动更新为 GitHub 的直链
 
-上传后的图片会显示 ✓ 标记。
+**方法 4：批量处理外部图片**
+1. 使用命令面板（Ctrl/Cmd + P）
+2. 运行 "Process all external images in current note"
+3. 自动下载并上传所有外部图片链接
+
+上传后的图片会显示 ✓ 标记，并保存在 GitHub 仓库中。
+
+### 缓存管理
+
+插件会自动缓存下载的外部图片到固定目录：`.obsidian/plugins/obsidian-image-plugin/cache/`
+
+**缓存策略**：
+- **LRU** (最近最少使用): 删除最久未访问的图片
+- **LFU** (最少使用频率): 删除访问次数最少的图片
+- **FIFO** (先进先出): 删除最早缓存的图片
+- **Smart** (智能策略 - 推荐): 综合考虑访问时间、频率、文件大小和年龄
+
+**缓存配置**：
+1. 设置最大缓存大小（MB，0表示不限制）
+2. 设置保护天数（最近N天访问的图片不会被删除）
+3. 查看缓存统计（大小、图片数量、平均大小等）
+4. 手动清理缓存
 
 ## 命令
 
@@ -137,6 +172,9 @@ npm run build
 
 - **Upload current image to GitHub**: 上传当前图片
 - **Test GitHub connection**: 测试 GitHub 连接
+- **Process all external images in current note**: 批量处理文档中的所有外部图片
+- **Clear image cache**: 清空图片缓存
+- **Show cache statistics**: 显示缓存统计信息
 
 ## 开发
 
@@ -150,9 +188,13 @@ obsidian-image-plugin/
 │   ├── settings.ts         # 设置管理
 │   ├── githubUploader.ts   # GitHub API 集成
 │   ├── imageZoom.ts        # 图片缩放功能
-│   └── imageRenderer.ts    # Markdown 渲染处理
+│   ├── imageRenderer.ts    # Markdown 渲染处理
+│   ├── cacheManager.ts     # 智能缓存管理
+│   ├── imageDownloader.ts  # 图片下载处理
+│   └── pasteHandler.ts     # 粘贴/拖放事件处理
 ├── styles.css              # 插件样式
 ├── manifest.json           # 插件元数据
+├── README.md               # 用户文档
 └── CLAUDE.md               # 开发者文档
 ```
 
