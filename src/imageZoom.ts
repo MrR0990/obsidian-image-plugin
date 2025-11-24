@@ -102,6 +102,8 @@ export class ImageZoomController {
 
     const wrapper = document.createElement("div");
     wrapper.classList.add("image-zoom-wrapper");
+    wrapper.contentEditable = "false";
+    wrapper.setAttribute("contenteditable", "false");
 
     // Insert wrapper before image
     img.parentNode?.insertBefore(wrapper, img);
@@ -124,6 +126,8 @@ export class ImageZoomController {
     const controls = document.createElement("div");
     controls.classList.add("image-zoom-controls");
     controls.style.display = "none"; // Hidden by default
+    controls.contentEditable = "false"; // Prevent editor interference
+    controls.setAttribute("contenteditable", "false");
     console.log(`[ImageZoom] Created controls div`);
 
     // Create preset buttons
@@ -131,11 +135,33 @@ export class ImageZoomController {
       const btn = document.createElement("button");
       btn.classList.add("image-zoom-btn");
       btn.textContent = `${preset}%`;
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        console.log(`[ImageZoom] Preset button clicked: ${preset}%`);
-        this.setImageWidth(img, preset);
-      });
+      btn.type = "button"; // Explicitly set button type
+      btn.contentEditable = "false";
+      btn.setAttribute("contenteditable", "false");
+
+      btn.addEventListener(
+        "click",
+        (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          console.log(`[ImageZoom] Preset button clicked: ${preset}%`);
+          this.setImageWidth(img, preset);
+          return false;
+        },
+        true,
+      ); // Use capture phase
+
+      // Also prevent mousedown to stop any editor selection
+      btn.addEventListener(
+        "mousedown",
+        (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        },
+        true,
+      );
+
       controls.appendChild(btn);
       console.log(`[ImageZoom] Added preset button: ${preset}%`);
     });
@@ -144,11 +170,32 @@ export class ImageZoomController {
     const uploadBtn = document.createElement("button");
     uploadBtn.classList.add("image-zoom-btn", "upload-btn");
     uploadBtn.textContent = "📤 Upload";
-    uploadBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      console.log(`[ImageZoom] Upload button clicked`);
-      this.triggerUpload(img);
-    });
+    uploadBtn.type = "button";
+    uploadBtn.contentEditable = "false";
+    uploadBtn.setAttribute("contenteditable", "false");
+
+    uploadBtn.addEventListener(
+      "click",
+      (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        console.log(`[ImageZoom] Upload button clicked`);
+        this.triggerUpload(img);
+        return false;
+      },
+      true,
+    );
+
+    uploadBtn.addEventListener(
+      "mousedown",
+      (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      },
+      true,
+    );
+
     controls.appendChild(uploadBtn);
     console.log(`[ImageZoom] Added upload button`);
 
@@ -206,6 +253,8 @@ export class ImageZoomController {
     const resizeHandle = document.createElement("div");
     resizeHandle.classList.add("image-resize-handle");
     resizeHandle.innerHTML = "⊙"; // Resize icon
+    resizeHandle.contentEditable = "false";
+    resizeHandle.setAttribute("contenteditable", "false");
     wrapper.appendChild(resizeHandle);
 
     let isResizing = false;
