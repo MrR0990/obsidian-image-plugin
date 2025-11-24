@@ -266,9 +266,14 @@ export class PasteHandler {
     const cached = await this.cacheManager.add(tempUrl, arrayBuffer, undefined);
     console.log("[PasteHandler] Image saved to cache:", cached.localPath);
 
-    // Return the local path as URL
-    // Use app:// protocol which Obsidian can resolve
-    return `app://local/${cached.localPath}`;
+    // Return the local path as a proper Obsidian resource URL
+    // Format: app://obsidian.md/{vault-encoded-path}
+    // Or use the direct cache path relative to vault root
+    // Obsidian can resolve paths starting with .obsidian/
+    const relativePath = cached.localPath;
+    console.log("[PasteHandler] Using relative path:", relativePath);
+
+    return relativePath;
   }
 
   /**
@@ -372,13 +377,36 @@ export class PasteHandler {
   }
 
   /**
-   * Generate unique filename
+   * Generate unique filename with strong collision resistance
+   * Format: {sanitized-name}_{timestamp}_{random}.{ext}
    */
   private generateUniqueFilename(originalName: string): string {
     const timestamp = Date.now();
     const extension = originalName.split(".").pop() || "png";
     const nameWithoutExt = originalName.replace(/\.[^/.]+$/, "");
     const sanitizedName = nameWithoutExt.replace(/[^a-zA-Z0-9-_]/g, "_");
-    return `${sanitizedName}_${timestamp}.${extension}`;
+
+    // Add random string for extra uniqueness (8 characters)
+    const randomStr = Math.random().toString(36).substring(2, 10);
+
+    // Format: name_timestamp_random.ext
+    // Example: screenshot_1732435200000_a3f9k2d1.png
+    return `${sanitizedName}_${timestamp}_${randomStr}.${extension}`;
+  }
+
+  /**
+   * Generate content-based hash for deduplication (optional future use)
+   */
+  private async generateContentHash(arrayBuffer: ArrayBuffer): Promise<string> {
+    if (typeof crypto !== "undefined" && crypto.subtle) {
+      const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("")
+        .substring(0, 16);
+    }
+    // Fallback: use size and timestamp
+    return `${arrayBuffer.byteLength}_${Date.now()}`;
   }
 }

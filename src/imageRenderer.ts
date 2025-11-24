@@ -75,30 +75,34 @@ export class ImageRenderer {
     img.classList.add("enhanced-image");
     console.log(`[ImageRenderer] Marked image as enhanced:`, img.src);
 
-    // Check if image is external and should be processed
+    // Determine image type
+    const isCached = this.isCachedImage(img.src);
     const isExternal = this.downloader.isExternalImage(img.src);
     const isGitHub = this.downloader.isGitHubUrl(img.src);
     console.log(
-      `[ImageRenderer] Image external: ${isExternal}, GitHub: ${isGitHub}, autoDownload: ${this.settings.autoDownloadExternalImages}`,
+      `[ImageRenderer] Image type - Cached: ${isCached}, External: ${isExternal}, GitHub: ${isGitHub}, autoDownload: ${this.settings.autoDownloadExternalImages}`,
     );
 
-    if (this.settings.autoDownloadExternalImages && isExternal) {
-      // Skip if already on GitHub
-      if (!isGitHub) {
-        console.log(`[ImageRenderer] Processing external image:`, img.src);
-        await this.processExternalImage(img);
-      } else {
-        console.log(
-          `[ImageRenderer] Image already on GitHub, skipping:`,
-          img.src,
-        );
-      }
+    // Process external images if auto-download is enabled
+    // Skip cached and GitHub images
+    if (
+      this.settings.autoDownloadExternalImages &&
+      isExternal &&
+      !isGitHub &&
+      !isCached
+    ) {
+      console.log(`[ImageRenderer] Processing external image:`, img.src);
+      await this.processExternalImage(img);
     }
 
-    // Apply zoom and resize functionality
-    console.log(`[ImageRenderer] Applying zoom controls:`, img.src);
+    // ALWAYS apply zoom and resize functionality to ALL images
+    // Works for: cached images, local images, external images, GitHub images
+    console.log(
+      `[ImageRenderer] Applying zoom controls to ALL images:`,
+      img.src,
+    );
     this.zoomController.enhanceImage(img, container);
-    console.log(`[ImageRenderer] Zoom controls applied:`, img.src);
+    console.log(`[ImageRenderer] Zoom controls applied successfully`);
 
     // Listen for upload requests
     img.addEventListener("image-upload-requested", async (e: Event) => {
@@ -210,6 +214,17 @@ export class ImageRenderer {
       metadata.githubUrl = newSrc;
       metadata.isUploaded = true;
     }
+  }
+
+  /**
+   * Check if image is from cache
+   */
+  private isCachedImage(src: string): boolean {
+    return (
+      src.startsWith(".obsidian/plugins/obsidian-image-plugin/cache/") ||
+      src.includes("/cache/") ||
+      src.startsWith("cache://")
+    );
   }
 
   /**
