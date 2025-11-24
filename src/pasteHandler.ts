@@ -1,240 +1,384 @@
-import { Editor, MarkdownView, Notice, TFile } from 'obsidian';
-import { ImagePluginSettings } from './types';
-import { GitHubUploader } from './githubUploader';
-import { CacheManager } from './cacheManager';
+import { Editor, MarkdownView, Notice, TFile } from "obsidian";
+import { ImagePluginSettings } from "./types";
+import { GitHubUploader } from "./githubUploader";
+import { CacheManager } from "./cacheManager";
 
 /**
  * Paste and Drop Handler
  * Handles pasted and dropped images, uploads them to GitHub
  */
 export class PasteHandler {
-	private settings: ImagePluginSettings;
-	private uploader: GitHubUploader;
-	private cacheManager: CacheManager;
+  private settings: ImagePluginSettings;
+  private uploader: GitHubUploader;
+  private cacheManager: CacheManager;
 
-	constructor(
-		settings: ImagePluginSettings,
-		uploader: GitHubUploader,
-		cacheManager: CacheManager
-	) {
-		this.settings = settings;
-		this.uploader = uploader;
-		this.cacheManager = cacheManager;
-	}
+  constructor(
+    settings: ImagePluginSettings,
+    uploader: GitHubUploader,
+    cacheManager: CacheManager,
+  ) {
+    this.settings = settings;
+    this.uploader = uploader;
+    this.cacheManager = cacheManager;
+  }
 
-	/**
-	 * Update settings reference
-	 */
-	updateSettings(settings: ImagePluginSettings): void {
-		this.settings = settings;
-	}
+  /**
+   * Update settings reference
+   */
+  updateSettings(settings: ImagePluginSettings): void {
+    this.settings = settings;
+  }
 
-	/**
-	 * Handle paste event
-	 */
-	async handlePaste(evt: ClipboardEvent, editor: Editor, view: MarkdownView): Promise<boolean> {
-		// Check if auto-upload is enabled
-		if (!this.settings.autoUploadPastedImages) {
-			return false; // Let Obsidian handle it normally
-		}
+  /**
+   * Handle paste event
+   */
+  async handlePaste(
+    evt: ClipboardEvent,
+    editor: Editor,
+    view: MarkdownView,
+  ): Promise<boolean> {
+    console.log("[PasteHandler] ========================================");
+    console.log("[PasteHandler] handlePaste called");
+    console.log("[PasteHandler] ========================================");
 
-		// Get clipboard data
-		const clipboardData = evt.clipboardData;
-		if (!clipboardData) {
-			return false;
-		}
+    // Check if auto-upload is enabled
+    console.log(
+      "[PasteHandler] autoUploadPastedImages:",
+      this.settings.autoUploadPastedImages,
+    );
+    if (!this.settings.autoUploadPastedImages) {
+      console.log("[PasteHandler] Auto-upload disabled, skipping");
+      return false; // Let Obsidian handle it normally
+    }
 
-		// Check for image files
-		const files = clipboardData.files;
-		if (!files || files.length === 0) {
-			return false;
-		}
+    // Get clipboard data
+    const clipboardData = evt.clipboardData;
+    console.log("[PasteHandler] Clipboard data available:", !!clipboardData);
+    if (!clipboardData) {
+      console.log("[PasteHandler] No clipboard data");
+      return false;
+    }
 
-		// Process image files
-		const imageFiles = Array.from(files).filter(file =>
-			file.type.startsWith('image/')
-		);
+    // Check for image files
+    const files = clipboardData.files;
+    console.log("[PasteHandler] Files in clipboard:", files?.length || 0);
+    if (!files || files.length === 0) {
+      console.log("[PasteHandler] No files in clipboard");
+      return false;
+    }
 
-		if (imageFiles.length === 0) {
-			return false;
-		}
+    // Process image files
+    const imageFiles = Array.from(files).filter((file) =>
+      file.type.startsWith("image/"),
+    );
+    console.log("[PasteHandler] Image files found:", imageFiles.length);
 
-		// Prevent default paste behavior
-		evt.preventDefault();
+    if (imageFiles.length === 0) {
+      console.log("[PasteHandler] No image files found");
+      return false;
+    }
 
-		// Process each image
-		for (const file of imageFiles) {
-			await this.processImageFile(file, editor);
-		}
+    // Prevent default paste behavior
+    evt.preventDefault();
+    console.log("[PasteHandler] Default paste behavior prevented");
 
-		return true;
-	}
+    // Process each image
+    for (const file of imageFiles) {
+      console.log(
+        "[PasteHandler] Processing image file:",
+        file.name,
+        file.type,
+        file.size,
+        "bytes",
+      );
+      await this.processImageFile(file, editor);
+    }
 
-	/**
-	 * Handle drop event
-	 */
-	async handleDrop(evt: DragEvent, editor: Editor, view: MarkdownView): Promise<boolean> {
-		// Check if auto-upload is enabled
-		if (!this.settings.autoUploadDroppedImages) {
-			return false; // Let Obsidian handle it normally
-		}
+    console.log("[PasteHandler] handlePaste complete");
+    return true;
+  }
 
-		// Get dropped files
-		const files = evt.dataTransfer?.files;
-		if (!files || files.length === 0) {
-			return false;
-		}
+  /**
+   * Handle drop event
+   */
+  async handleDrop(
+    evt: DragEvent,
+    editor: Editor,
+    view: MarkdownView,
+  ): Promise<boolean> {
+    console.log("[PasteHandler] ========================================");
+    console.log("[PasteHandler] handleDrop called");
+    console.log("[PasteHandler] ========================================");
 
-		// Process image files
-		const imageFiles = Array.from(files).filter(file =>
-			file.type.startsWith('image/')
-		);
+    // Check if auto-upload is enabled
+    console.log(
+      "[PasteHandler] autoUploadDroppedImages:",
+      this.settings.autoUploadDroppedImages,
+    );
+    if (!this.settings.autoUploadDroppedImages) {
+      console.log("[PasteHandler] Auto-upload for drops disabled, skipping");
+      return false; // Let Obsidian handle it normally
+    }
 
-		if (imageFiles.length === 0) {
-			return false;
-		}
+    // Get dropped files
+    const files = evt.dataTransfer?.files;
+    console.log("[PasteHandler] Files dropped:", files?.length || 0);
+    if (!files || files.length === 0) {
+      console.log("[PasteHandler] No files dropped");
+      return false;
+    }
 
-		// Prevent default drop behavior
-		evt.preventDefault();
+    // Process image files
+    const imageFiles = Array.from(files).filter((file) =>
+      file.type.startsWith("image/"),
+    );
+    console.log("[PasteHandler] Image files in drop:", imageFiles.length);
 
-		// Process each image
-		for (const file of imageFiles) {
-			await this.processImageFile(file, editor);
-		}
+    if (imageFiles.length === 0) {
+      console.log("[PasteHandler] No image files in drop");
+      return false;
+    }
 
-		return true;
-	}
+    // Prevent default drop behavior
+    evt.preventDefault();
+    console.log("[PasteHandler] Default drop behavior prevented");
 
-	/**
-	 * Process a single image file
-	 */
-	private async processImageFile(file: File, editor: Editor): Promise<void> {
-		try {
-			new Notice(`Uploading image: ${file.name}...`);
+    // Process each image
+    for (const file of imageFiles) {
+      console.log(
+        "[PasteHandler] Processing dropped image:",
+        file.name,
+        file.type,
+        file.size,
+        "bytes",
+      );
+      await this.processImageFile(file, editor);
+    }
 
-			// Read file as ArrayBuffer
-			const arrayBuffer = await this.readFileAsArrayBuffer(file);
+    console.log("[PasteHandler] handleDrop complete");
+    return true;
+  }
 
-			// Upload to GitHub
-			const githubUrl = await this.uploader.uploadImage(arrayBuffer, file.name);
+  /**
+   * Process a single image file
+   */
+  private async processImageFile(file: File, editor: Editor): Promise<void> {
+    console.log("[PasteHandler] processImageFile START:", file.name);
 
-			// Cache the image locally
-			if (this.settings.enableCache) {
-				await this.cacheManager.add(githubUrl, arrayBuffer, githubUrl);
-			}
+    try {
+      // Read file as ArrayBuffer
+      console.log("[PasteHandler] Reading file as ArrayBuffer...");
+      const arrayBuffer = await this.readFileAsArrayBuffer(file);
+      console.log(
+        "[PasteHandler] File read complete, size:",
+        arrayBuffer.byteLength,
+        "bytes",
+      );
 
-			// Insert markdown image link at cursor
-			const imageMarkdown = `![${file.name}](${githubUrl})`;
-			editor.replaceSelection(imageMarkdown + '\n');
+      // Generate unique filename
+      const uniqueFilename = this.generateUniqueFilename(file.name);
+      console.log("[PasteHandler] Generated filename:", uniqueFilename);
 
-			new Notice(`✓ Image uploaded successfully!`);
-		} catch (error) {
-			console.error('Failed to process image:', error);
-			new Notice(`✗ Failed to upload image: ${error.message}`);
-		}
-	}
+      let imageUrl: string;
+      let isUploaded = false;
 
-	/**
-	 * Read file as ArrayBuffer
-	 */
-	private readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
-		return new Promise((resolve, reject) => {
-			const reader = new FileReader();
+      // Check if GitHub is configured
+      const isGitHubConfigured = this.uploader.isConfigured();
+      console.log("[PasteHandler] GitHub configured:", isGitHubConfigured);
 
-			reader.onload = () => {
-				resolve(reader.result as ArrayBuffer);
-			};
+      if (isGitHubConfigured) {
+        // GitHub is configured - upload directly
+        console.log("[PasteHandler] Uploading to GitHub...");
+        new Notice(`Uploading image to GitHub: ${file.name}...`);
 
-			reader.onerror = () => {
-				reject(new Error('Failed to read file'));
-			};
+        try {
+          imageUrl = await this.uploader.uploadImage(
+            arrayBuffer,
+            uniqueFilename,
+          );
+          isUploaded = true;
+          console.log("[PasteHandler] Upload complete, URL:", imageUrl);
+          new Notice(`✓ Image uploaded to GitHub!`);
+        } catch (uploadError) {
+          console.error("[PasteHandler] GitHub upload failed:", uploadError);
+          new Notice(
+            `⚠ GitHub upload failed, saving to cache: ${uploadError.message}`,
+          );
+          // Fall back to cache
+          imageUrl = await this.saveToCacheOnly(
+            arrayBuffer,
+            uniqueFilename,
+            false,
+          );
+        }
+      } else {
+        // GitHub not configured - save to cache only
+        console.log(
+          "[PasteHandler] GitHub not configured, saving to cache only",
+        );
+        new Notice(`💾 Saving image to cache: ${file.name}`);
+        imageUrl = await this.saveToCacheOnly(
+          arrayBuffer,
+          uniqueFilename,
+          false,
+        );
+        new Notice(
+          `✓ Image cached! Configure GitHub in settings to sync to cloud.`,
+        );
+      }
 
-			reader.readAsArrayBuffer(file);
-		});
-	}
+      // Cache the image if GitHub upload succeeded
+      if (isUploaded && this.settings.enableCache) {
+        console.log("[PasteHandler] Caching GitHub image locally...");
+        await this.cacheManager.add(imageUrl, arrayBuffer, imageUrl);
+        console.log("[PasteHandler] Image cached");
+      }
 
-	/**
-	 * Process existing local images in vault
-	 * Uploads them to GitHub and replaces references
-	 */
-	async uploadExistingImage(file: TFile, editor: Editor): Promise<string | null> {
-		try {
-			// Read the file from vault
-			const arrayBuffer = await file.vault.adapter.readBinary(file.path);
+      // Insert markdown image link at cursor
+      const imageMarkdown = `![${file.name}](${imageUrl})`;
+      console.log("[PasteHandler] Inserting markdown:", imageMarkdown);
+      editor.replaceSelection(imageMarkdown + "\n");
+      console.log("[PasteHandler] Markdown inserted");
 
-			// Upload to GitHub
-			const githubUrl = await this.uploader.uploadImage(arrayBuffer, file.name);
+      console.log("[PasteHandler] processImageFile SUCCESS");
+    } catch (error) {
+      console.error("[PasteHandler] Failed to process image:", error);
+      new Notice(`✗ Failed to process image: ${error.message}`);
+      console.log("[PasteHandler] processImageFile FAILED");
+    }
+  }
 
-			// Cache the image
-			if (this.settings.enableCache) {
-				await this.cacheManager.add(githubUrl, arrayBuffer, githubUrl);
-			}
+  /**
+   * Save image to cache only (when GitHub is not configured)
+   */
+  private async saveToCacheOnly(
+    arrayBuffer: ArrayBuffer,
+    filename: string,
+    uploaded: boolean = false,
+  ): Promise<string> {
+    console.log("[PasteHandler] saveToCacheOnly:", filename);
 
-			new Notice(`✓ ${file.name} uploaded to GitHub`);
-			return githubUrl;
-		} catch (error) {
-			console.error('Failed to upload existing image:', error);
-			new Notice(`✗ Failed to upload ${file.name}: ${error.message}`);
-			return null;
-		}
-	}
+    // Generate a temporary URL for the cached image
+    const tempUrl = `cache://${filename}`;
+    console.log("[PasteHandler] Generated cache URL:", tempUrl);
 
-	/**
-	 * Batch upload all local images in current note
-	 */
-	async uploadAllLocalImagesInNote(editor: Editor, content: string): Promise<string> {
-		// Regex to find local image links
-		// Matches: ![[image.png]] and ![](path/to/image.png)
-		const localImageRegex = /!\[\[([^\]]+\.(png|jpg|jpeg|gif|webp|svg|bmp))\]\]|!\[([^\]]*)\]\(([^)]+\.(png|jpg|jpeg|gif|webp|svg|bmp))\)/gi;
+    // Add to cache
+    const cached = await this.cacheManager.add(tempUrl, arrayBuffer, undefined);
+    console.log("[PasteHandler] Image saved to cache:", cached.localPath);
 
-		let updatedContent = content;
-		const matches = Array.from(content.matchAll(localImageRegex));
+    // Return the local path as URL
+    // Use app:// protocol which Obsidian can resolve
+    return `app://local/${cached.localPath}`;
+  }
 
-		if (matches.length === 0) {
-			new Notice('No local images found in current note');
-			return content;
-		}
+  /**
+   * Read file as ArrayBuffer
+   */
+  private readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
 
-		new Notice(`Found ${matches.length} local images, uploading...`);
+      reader.onload = () => {
+        resolve(reader.result as ArrayBuffer);
+      };
 
-		for (const match of matches) {
-			const fullMatch = match[0];
-			let imagePath: string;
+      reader.onerror = () => {
+        reject(new Error("Failed to read file"));
+      };
 
-			// Check which format it is
-			if (match[1]) {
-				// ![[image.png]] format
-				imagePath = match[1];
-			} else if (match[4]) {
-				// ![](path/to/image.png) format
-				imagePath = match[4];
-			} else {
-				continue;
-			}
+      reader.readAsArrayBuffer(file);
+    });
+  }
 
-			try {
-				// Get the file from vault
-				const file = editor.getDoc().getValue(); // Get access to vault through editor
-				// This is a simplified version - in practice, you'd need vault access
+  /**
+   * Process existing local images in vault
+   * Uploads them to GitHub and replaces references
+   */
+  async uploadExistingImage(
+    file: TFile,
+    editor: Editor,
+  ): Promise<string | null> {
+    try {
+      // Read the file from vault
+      const arrayBuffer = await file.vault.adapter.readBinary(file.path);
 
-				// For now, we'll skip local file processing and show a notice
-				console.log('Local image found:', imagePath);
-			} catch (error) {
-				console.error('Failed to process local image:', error);
-			}
-		}
+      // Upload to GitHub
+      const githubUrl = await this.uploader.uploadImage(arrayBuffer, file.name);
 
-		return updatedContent;
-	}
+      // Cache the image
+      if (this.settings.enableCache) {
+        await this.cacheManager.add(githubUrl, arrayBuffer, githubUrl);
+      }
 
-	/**
-	 * Generate unique filename
-	 */
-	private generateUniqueFilename(originalName: string): string {
-		const timestamp = Date.now();
-		const extension = originalName.split('.').pop() || 'png';
-		const nameWithoutExt = originalName.replace(/\.[^/.]+$/, '');
-		const sanitizedName = nameWithoutExt.replace(/[^a-zA-Z0-9-_]/g, '_');
-		return `${sanitizedName}_${timestamp}.${extension}`;
-	}
+      new Notice(`✓ ${file.name} uploaded to GitHub`);
+      return githubUrl;
+    } catch (error) {
+      console.error("Failed to upload existing image:", error);
+      new Notice(`✗ Failed to upload ${file.name}: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Batch upload all local images in current note
+   */
+  async uploadAllLocalImagesInNote(
+    editor: Editor,
+    content: string,
+  ): Promise<string> {
+    // Regex to find local image links
+    // Matches: ![[image.png]] and ![](path/to/image.png)
+    const localImageRegex =
+      /!\[\[([^\]]+\.(png|jpg|jpeg|gif|webp|svg|bmp))\]\]|!\[([^\]]*)\]\(([^)]+\.(png|jpg|jpeg|gif|webp|svg|bmp))\)/gi;
+
+    let updatedContent = content;
+    const matches = Array.from(content.matchAll(localImageRegex));
+
+    if (matches.length === 0) {
+      new Notice("No local images found in current note");
+      return content;
+    }
+
+    new Notice(`Found ${matches.length} local images, uploading...`);
+
+    for (const match of matches) {
+      const fullMatch = match[0];
+      let imagePath: string;
+
+      // Check which format it is
+      if (match[1]) {
+        // ![[image.png]] format
+        imagePath = match[1];
+      } else if (match[4]) {
+        // ![](path/to/image.png) format
+        imagePath = match[4];
+      } else {
+        continue;
+      }
+
+      try {
+        // Get the file from vault
+        const file = editor.getDoc().getValue(); // Get access to vault through editor
+        // This is a simplified version - in practice, you'd need vault access
+
+        // For now, we'll skip local file processing and show a notice
+        console.log("Local image found:", imagePath);
+      } catch (error) {
+        console.error("Failed to process local image:", error);
+      }
+    }
+
+    return updatedContent;
+  }
+
+  /**
+   * Generate unique filename
+   */
+  private generateUniqueFilename(originalName: string): string {
+    const timestamp = Date.now();
+    const extension = originalName.split(".").pop() || "png";
+    const nameWithoutExt = originalName.replace(/\.[^/.]+$/, "");
+    const sanitizedName = nameWithoutExt.replace(/[^a-zA-Z0-9-_]/g, "_");
+    return `${sanitizedName}_${timestamp}.${extension}`;
+  }
 }

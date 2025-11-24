@@ -14,8 +14,8 @@ export const DEFAULT_SETTINGS: ImagePluginSettings = {
   enableClickZoom: true,
   enableDragResize: true,
   zoomPresets: [25, 50, 75, 100, 150, 200],
-  autoUploadPastedImages: false,
-  autoUploadDroppedImages: false,
+  autoUploadPastedImages: true, // ✅ 默认启用粘贴上传
+  autoUploadDroppedImages: true, // ✅ 默认启用拖放上传
   autoDownloadExternalImages: true,
   enableCache: true,
   maxCacheSize: 0, // 0 means unlimited

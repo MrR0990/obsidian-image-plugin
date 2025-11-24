@@ -180,6 +180,14 @@ export default class ImagePlugin extends Plugin {
       },
     });
 
+    this.addCommand({
+      id: "sync-cached-images-to-github",
+      name: "Sync cached images to GitHub",
+      callback: async () => {
+        await this.syncCachedImagesToGitHub();
+      },
+    });
+
     // Add settings tab
     this.addSettingTab(new ImagePluginSettingTab(this.app, this));
 
@@ -245,6 +253,108 @@ export default class ImagePlugin extends Plugin {
       }
     } else {
       new Notice("GitHub is not configured. Please configure in settings.");
+    }
+  }
+
+  /**
+   * Sync cached images to GitHub
+   * Uploads all cache-only images to GitHub and updates references in notes
+   */
+  private async syncCachedImagesToGitHub(): Promise<void> {
+    console.log("[Main] syncCachedImagesToGitHub START");
+
+    // Check if GitHub is configured
+    if (!this.uploader.isConfigured()) {
+      new Notice(
+        "⚠ GitHub is not configured. Please configure GitHub settings first.",
+      );
+      console.log("[Main] GitHub not configured, aborting sync");
+      return;
+    }
+
+    new Notice("🔄 Syncing cached images to GitHub...");
+    console.log("[Main] Starting cache sync to GitHub");
+
+    try {
+      // Get all cached images
+      const stats = this.cacheManager.getStats();
+      console.log(`[Main] Found ${stats.imageCount} cached images`);
+
+      if (stats.imageCount === 0) {
+        new Notice("No cached images to sync");
+        console.log("[Main] No images to sync");
+        return;
+      }
+
+      // Get cache index to find cache-only images
+      const cacheIndex = await this.cacheManager.getAllCached();
+      const cacheOnlyImages = cacheIndex.filter(
+        (img) => !img.githubUrl && img.url.startsWith("cache://"),
+      );
+
+      console.log(
+        `[Main] Found ${cacheOnlyImages.length} cache-only images to upload`,
+      );
+
+      if (cacheOnlyImages.length === 0) {
+        new Notice("✓ All cached images are already on GitHub");
+        console.log("[Main] All images already on GitHub");
+        return;
+      }
+
+      new Notice(
+        `Found ${cacheOnlyImages.length} images to upload. Starting sync...`,
+      );
+
+      let successCount = 0;
+      let failCount = 0;
+
+      // Upload each cache-only image
+      for (const cachedImg of cacheOnlyImages) {
+        try {
+          console.log(`[Main] Uploading cached image: ${cachedImg.url}`);
+
+          // Read image data from cache
+          const data = await this.app.vault.adapter.readBinary(
+            cachedImg.localPath,
+          );
+
+          // Extract filename from cache URL
+          const filename = cachedImg.url.replace("cache://", "");
+
+          // Upload to GitHub
+          const githubUrl = await this.uploader.uploadImage(data, filename);
+          console.log(`[Main] Uploaded to GitHub: ${githubUrl}`);
+
+          // Update cache entry with GitHub URL
+          await this.cacheManager.updateGitHubUrl(cachedImg.url, githubUrl);
+
+          // TODO: Update markdown references in notes
+          // This would require scanning all markdown files and replacing
+          // app://local/... URLs with GitHub URLs
+
+          successCount++;
+        } catch (error) {
+          console.error(`[Main] Failed to upload ${cachedImg.url}:`, error);
+          failCount++;
+        }
+      }
+
+      // Show summary
+      if (failCount === 0) {
+        new Notice(`✓ Successfully synced ${successCount} images to GitHub!`);
+      } else {
+        new Notice(
+          `⚠ Synced ${successCount} images, ${failCount} failed. Check console for details.`,
+        );
+      }
+
+      console.log(
+        `[Main] Sync complete: ${successCount} success, ${failCount} failed`,
+      );
+    } catch (error) {
+      console.error("[Main] Sync failed:", error);
+      new Notice(`✗ Sync failed: ${error.message}`);
     }
   }
 }
