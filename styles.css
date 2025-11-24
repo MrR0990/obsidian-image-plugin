@@ -24,7 +24,7 @@
 /* Enhanced images */
 .image-zoom-wrapper img.enhanced-image {
     display: block;
-    max-width: 100%;
+    max-width: none; /* Allow images to scale beyond 100% */
     height: auto;
     transition: all 0.3s ease;
     border-radius: 4px;
