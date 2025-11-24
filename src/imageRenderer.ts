@@ -43,11 +43,17 @@ export class ImageRenderer {
   ): Promise<void> {
     // Find all images in the element
     const images = el.querySelectorAll("img");
+    console.log(
+      `[ImageRenderer] processImages called, found ${images.length} images`,
+    );
 
     // Process each image
     for (const img of Array.from(images)) {
+      console.log(`[ImageRenderer] Processing image:`, img.src);
       await this.enhanceImage(img as HTMLImageElement, el);
     }
+
+    console.log(`[ImageRenderer] Finished processing ${images.length} images`);
   }
 
   /**
@@ -57,32 +63,50 @@ export class ImageRenderer {
     img: HTMLImageElement,
     container: HTMLElement,
   ): Promise<void> {
+    console.log(`[ImageRenderer] enhanceImage called for:`, img.src);
+
     // Skip if already enhanced
     if (img.classList.contains("enhanced-image")) {
+      console.log(`[ImageRenderer] Image already enhanced, skipping:`, img.src);
       return;
     }
 
     // Mark as enhanced
     img.classList.add("enhanced-image");
+    console.log(`[ImageRenderer] Marked image as enhanced:`, img.src);
 
     // Check if image is external and should be processed
-    if (
-      this.settings.autoDownloadExternalImages &&
-      this.downloader.isExternalImage(img.src)
-    ) {
+    const isExternal = this.downloader.isExternalImage(img.src);
+    const isGitHub = this.downloader.isGitHubUrl(img.src);
+    console.log(
+      `[ImageRenderer] Image external: ${isExternal}, GitHub: ${isGitHub}, autoDownload: ${this.settings.autoDownloadExternalImages}`,
+    );
+
+    if (this.settings.autoDownloadExternalImages && isExternal) {
       // Skip if already on GitHub
-      if (!this.downloader.isGitHubUrl(img.src)) {
+      if (!isGitHub) {
+        console.log(`[ImageRenderer] Processing external image:`, img.src);
         await this.processExternalImage(img);
+      } else {
+        console.log(
+          `[ImageRenderer] Image already on GitHub, skipping:`,
+          img.src,
+        );
       }
     }
 
     // Apply zoom and resize functionality
+    console.log(`[ImageRenderer] Applying zoom controls:`, img.src);
     this.zoomController.enhanceImage(img, container);
+    console.log(`[ImageRenderer] Zoom controls applied:`, img.src);
 
     // Listen for upload requests
     img.addEventListener("image-upload-requested", async (e: Event) => {
+      console.log(`[ImageRenderer] Upload requested for:`, img.src);
       await this.handleUploadRequest(img, e);
     });
+
+    console.log(`[ImageRenderer] Image enhancement complete:`, img.src);
   }
 
   /**
@@ -90,37 +114,50 @@ export class ImageRenderer {
    */
   private async processExternalImage(img: HTMLImageElement): Promise<void> {
     const originalSrc = img.src;
+    console.log(`[ImageRenderer] processExternalImage START for:`, originalSrc);
 
     try {
       // Add loading indicator
       const wrapper = img.closest(".image-zoom-wrapper");
       if (wrapper) {
         wrapper.classList.add("loading");
+        console.log(`[ImageRenderer] Added loading indicator`);
       }
 
       // Process the image (download, cache, and optionally upload)
+      console.log(`[ImageRenderer] Calling downloader.processExternalImage...`);
       const newUrl = await this.downloader.processExternalImage(originalSrc);
+      console.log(`[ImageRenderer] Got new URL:`, newUrl);
 
       // Update image source if it changed
       if (newUrl !== originalSrc) {
+        console.log(
+          `[ImageRenderer] Updating image src from ${originalSrc} to ${newUrl}`,
+        );
         this.updateImageSrc(img, newUrl);
+      } else {
+        console.log(`[ImageRenderer] URL unchanged, no update needed`);
       }
 
       // Mark as successfully uploaded if we got a GitHub URL
       if (this.downloader.isGitHubUrl(newUrl)) {
+        console.log(`[ImageRenderer] URL is GitHub URL, marking as uploaded`);
         if (wrapper) {
           wrapper.classList.add("uploaded");
         }
       }
     } catch (error) {
-      console.error("Failed to process external image:", error);
+      console.error("[ImageRenderer] Failed to process external image:", error);
     } finally {
       // Remove loading indicator
       const wrapper = img.closest(".image-zoom-wrapper");
       if (wrapper) {
         wrapper.classList.remove("loading");
+        console.log(`[ImageRenderer] Removed loading indicator`);
       }
     }
+
+    console.log(`[ImageRenderer] processExternalImage END for:`, originalSrc);
   }
 
   /**

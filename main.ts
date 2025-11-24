@@ -28,39 +28,68 @@ export default class ImagePlugin extends Plugin {
   private pasteHandler: PasteHandler;
 
   async onload() {
-    console.log("Loading Image Plugin");
+    console.log("========================================");
+    console.log("Loading Image Plugin - START");
+    console.log("========================================");
 
     // Load settings
+    console.log("[Main] Loading settings...");
     await this.loadSettings();
+    console.log(
+      "[Main] Settings loaded:",
+      JSON.stringify(this.settings, null, 2),
+    );
 
     // Initialize cache manager first
+    console.log("[Main] Initializing CacheManager...");
     this.cacheManager = new CacheManager(this.app.vault, this.settings);
     await this.cacheManager.initialize();
+    console.log("[Main] CacheManager initialized");
 
     // Initialize other modules
+    console.log("[Main] Initializing GitHubUploader...");
     this.uploader = new GitHubUploader(this.settings);
+    console.log(
+      "[Main] GitHubUploader initialized, configured:",
+      this.uploader.isConfigured(),
+    );
+
+    console.log("[Main] Initializing ImageZoomController...");
     this.zoomController = new ImageZoomController(this.settings);
+    console.log("[Main] ImageZoomController initialized");
+
+    console.log("[Main] Initializing ImageDownloader...");
     this.downloader = new ImageDownloader(
       this.settings,
       this.cacheManager,
       this.uploader,
     );
+    console.log("[Main] ImageDownloader initialized");
+
+    console.log("[Main] Initializing ImageRenderer...");
     this.renderer = new ImageRenderer(
       this.settings,
       this.zoomController,
       this.uploader,
       this.downloader,
     );
+    console.log("[Main] ImageRenderer initialized");
+
+    console.log("[Main] Initializing PasteHandler...");
     this.pasteHandler = new PasteHandler(
       this.settings,
       this.uploader,
       this.cacheManager,
     );
+    console.log("[Main] PasteHandler initialized");
 
     // Register markdown post processor for images
+    console.log("[Main] Registering markdown post processor...");
     this.registerMarkdownPostProcessor(async (el, ctx) => {
+      console.log("[Main] Markdown post processor triggered");
       await this.renderer.processImages(el, ctx);
     });
+    console.log("[Main] Markdown post processor registered");
 
     // Register paste event handler
     this.registerEvent(
@@ -163,11 +192,15 @@ export default class ImagePlugin extends Plugin {
       );
     });
 
+    console.log("========================================");
     console.log("Image Plugin loaded successfully");
+    console.log("========================================");
   }
 
   onunload() {
+    console.log("========================================");
     console.log("Unloading Image Plugin");
+    console.log("========================================");
   }
 
   async loadSettings() {
