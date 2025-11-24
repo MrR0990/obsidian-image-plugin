@@ -89,8 +89,44 @@ export default class ImagePlugin extends Plugin {
     this.registerMarkdownPostProcessor(async (el, ctx) => {
       console.log("[Main] Markdown post processor triggered");
       await this.renderer.processImages(el, ctx);
+
+      // Also process after a short delay to catch async-loaded images (Wikilinks)
+      setTimeout(async () => {
+        console.log("[Main] Processing delayed images (for Wikilinks)");
+        await this.renderer.processImages(el, ctx);
+      }, 100);
     });
     console.log("[Main] Markdown post processor registered");
+
+    // Listen for layout changes to process images in new/switched views
+    console.log("[Main] Setting up layout change listener...");
+    this.registerEvent(
+      this.app.workspace.on("layout-change", () => {
+        console.log("[Main] Layout changed, processing all images");
+        setTimeout(async () => {
+          const activeView =
+            this.app.workspace.getActiveViewOfType(MarkdownView);
+          if (activeView) {
+            await this.renderer.processImages(activeView.contentEl, {} as any);
+          }
+        }, 200);
+      }),
+    );
+
+    // Also process images when active leaf changes
+    console.log("[Main] Setting up active leaf change listener...");
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", () => {
+        console.log("[Main] Active leaf changed, processing images");
+        setTimeout(async () => {
+          const activeView =
+            this.app.workspace.getActiveViewOfType(MarkdownView);
+          if (activeView) {
+            await this.renderer.processImages(activeView.contentEl, {} as any);
+          }
+        }, 200);
+      }),
+    );
 
     // Register paste event handler
     this.registerEvent(
