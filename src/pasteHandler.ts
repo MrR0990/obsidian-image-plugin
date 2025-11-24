@@ -235,7 +235,16 @@ export class PasteHandler {
       }
 
       // Insert markdown image link at cursor
-      const imageMarkdown = `![${file.name}](${imageUrl})`;
+      // Use Wikilink format for cached images (Obsidian native support)
+      // Use standard Markdown for external URLs
+      let imageMarkdown: string;
+      if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+        // External URL (including GitHub) - use standard Markdown
+        imageMarkdown = `![${file.name}](${imageUrl})`;
+      } else {
+        // Local/cached image - use Wikilink format for better path resolution
+        imageMarkdown = `![[${imageUrl}]]`;
+      }
       console.log("[PasteHandler] Inserting markdown:", imageMarkdown);
       editor.replaceSelection(imageMarkdown + "\n");
       console.log("[PasteHandler] Markdown inserted");
