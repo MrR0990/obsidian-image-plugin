@@ -1,4 +1,4 @@
-import { Editor, MarkdownView, Notice, TFile } from "obsidian";
+import { Editor, MarkdownView, Notice, TFile, Vault } from "obsidian";
 import { ImagePluginSettings } from "./types";
 import { GitHubUploader } from "./githubUploader";
 import { CacheManager } from "./cacheManager";
@@ -11,15 +11,18 @@ export class PasteHandler {
   private settings: ImagePluginSettings;
   private uploader: GitHubUploader;
   private cacheManager: CacheManager;
+  private vault: Vault;
 
   constructor(
     settings: ImagePluginSettings,
     uploader: GitHubUploader,
     cacheManager: CacheManager,
+    vault: Vault,
   ) {
     this.settings = settings;
     this.uploader = uploader;
     this.cacheManager = cacheManager;
+    this.vault = vault;
   }
 
   /**
@@ -258,31 +261,44 @@ export class PasteHandler {
   }
 
   /**
-   * Save image to cache only (when GitHub is not configured)
+   * Save image to local folder (when GitHub is not configured)
+   * Saves to vault's assets folder which Obsidian can access
    */
   private async saveToCacheOnly(
     arrayBuffer: ArrayBuffer,
     filename: string,
     uploaded: boolean = false,
   ): Promise<string> {
-    console.log("[PasteHandler] saveToCacheOnly:", filename);
+    console.log("[PasteHandler] saveToLocalFolder:", filename);
 
-    // Generate a temporary URL for the cached image
-    const tempUrl = `cache://${filename}`;
-    console.log("[PasteHandler] Generated cache URL:", tempUrl);
+    // Get local image folder from settings
+    const localFolder = this.settings.localImageFolder || "assets/images";
+    console.log("[PasteHandler] Local folder:", localFolder);
 
-    // Add to cache
-    const cached = await this.cacheManager.add(tempUrl, arrayBuffer, undefined);
-    console.log("[PasteHandler] Image saved to cache:", cached.localPath);
+    // Ensure folder exists
+    try {
+      await this.vault.adapter.mkdir(localFolder);
+    } catch (error) {
+      // Folder might already exist, that's ok
+    }
 
-    // Return the local path as a proper Obsidian resource URL
-    // Format: app://obsidian.md/{vault-encoded-path}
-    // Or use the direct cache path relative to vault root
-    // Obsidian can resolve paths starting with .obsidian/
-    const relativePath = cached.localPath;
-    console.log("[PasteHandler] Using relative path:", relativePath);
+    // Full path in vault
+    const fullPath = `${localFolder}/${filename}`;
+    console.log("[PasteHandler] Saving to:", fullPath);
 
-    return relativePath;
+    // Save image to vault
+    await this.vault.adapter.writeBinary(fullPath, arrayBuffer);
+    console.log("[PasteHandler] Image saved successfully");
+
+    // Also add to cache for tracking and later upload
+    const cacheUrl = `cache://${filename}`;
+    await this.cacheManager.add(cacheUrl, arrayBuffer, undefined);
+    console.log("[PasteHandler] Added to cache index for future sync");
+
+    // Return the path for Wikilink
+    // Obsidian can resolve this path from vault root
+    console.log("[PasteHandler] Returning path:", fullPath);
+    return fullPath;
   }
 
   /**

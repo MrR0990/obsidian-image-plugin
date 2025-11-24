@@ -26,6 +26,9 @@ export interface ImagePluginSettings {
   maxCacheSize: number; // in MB, 0 means unlimited
   cacheProtectionDays: number; // protect images accessed within N days
   cacheStrategy: "lru" | "lfu" | "fifo" | "smart"; // cache eviction strategy
+
+  // Local Storage Settings
+  localImageFolder: string; // folder for local images when GitHub not configured
 }
 
 /**

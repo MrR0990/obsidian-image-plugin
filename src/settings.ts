@@ -21,6 +21,7 @@ export const DEFAULT_SETTINGS: ImagePluginSettings = {
   maxCacheSize: 0, // 0 means unlimited
   cacheProtectionDays: 7,
   cacheStrategy: "smart",
+  localImageFolder: "assets/images", // 本地图片文件夹
 };
 
 /**

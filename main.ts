@@ -80,6 +80,7 @@ export default class ImagePlugin extends Plugin {
       this.settings,
       this.uploader,
       this.cacheManager,
+      this.app.vault,
     );
     console.log("[Main] PasteHandler initialized");
 
